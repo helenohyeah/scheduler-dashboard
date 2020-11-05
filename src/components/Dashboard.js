@@ -3,31 +3,40 @@ import React, { Component } from "react";
 import classnames from "classnames";
 import axios from "axios";
 
+// HELPER FUNCTIONS
+import {
+  getTotalInterviews,
+  getLeastPopularTimeSlot,
+  getMostPopularDay,
+  getInterviewsPerDay
+ } from "helpers/selectors";
+import { setInterview } from "helpers/reducers";
+
 // COMPONENTS
 import Loading from "./Loading";
 import Panel from "./Panel";
 
-// MOCK HARDCODED DATA
+// DATA
 const data = [
   {
     id: 1,
     label: "Total Interviews",
-    value: 6
+    getValue: getTotalInterviews
   },
   {
     id: 2,
     label: "Least Popular Time Slot",
-    value: "1pm"
+    getValue: getLeastPopularTimeSlot
   },
   {
     id: 3,
     label: "Most Popular Day",
-    value: "Wednesday"
+    getValue: getMostPopularDay
   },
   {
     id: 4,
     label: "Interviews Per Day",
-    value: "2.3"
+    getValue: getInterviewsPerDay
   }
 ]; 
 
@@ -42,7 +51,9 @@ class Dashboard extends Component {
     interviewers: {}
   };
   
+  // ON MOUNT METHOD
   componentDidMount() {
+
     // GET DATA FROM SERVER
     axios.defaults.baseURL = "http://localhost:9000";
     Promise.all([
@@ -58,6 +69,21 @@ class Dashboard extends Component {
       });
     }).catch(err => console.log("Error with GET: ", err));
 
+    // WEBSOCKET TO ADD UPDATES REALTIME
+    this.socket = new WebSocket(process.env.REACT_APP_WEBSOCKET_URL);
+
+    // LISTEN FOR CHANGES TO UPDATE STATE
+    this.socket.onmessage = event => {
+      console.log('socket listening')
+      const data = JSON.parse(event.data);
+    
+      if (typeof data === "object" && data.type === "SET_INTERVIEW") {
+        this.setState(previousState =>
+          setInterview(previousState, data.id, data.interview)
+        );
+      }
+    }; 
+
     // CHECK LOCAL STORAGE FOR SAVED FOCUS STATE
     const focused = JSON.parse(localStorage.getItem("focused"));
 
@@ -66,20 +92,28 @@ class Dashboard extends Component {
     }
   }
 
-  // SAVE FOCUS TO LOCAL STORAGE WHEN STATE CHANGES
+  // ON STATE CHANGE METHOD
   componentDidUpdate(previousProps, previousState) {
+    // SAVE FOCUS TO LOCAL STORAGE WHEN STATE CHANGES
     if (previousState.focused !== this.state.focused) {
       localStorage.setItem("focused", JSON.stringify(this.state.focused));
     }
   }
+  
+  // WHEN COMPONENT UNMOUNTS
+  componentWillUnmount() {
+    // CLEAN UP WEBSOCKET CONNECTION
+    this.socket.close();
+  }
 
-  // TOGGLE PANEL FOCUS WHEN WHEN SELECTED
+  // TOGGLE PANEL METHOD
   selectPanel (id) {
     this.setState({
       focused: id === this.state.focused ? null : id
     });
    }
 
+  // RENDER METHOD (RUNS EVERYTIME)
   render() {
     const dashboardClasses = classnames("dashboard", {
       "dashboard--focused": this.state.focused
@@ -99,7 +133,7 @@ class Dashboard extends Component {
             key={panel.id}
             id={panel.id}
             label={panel.label}
-            value={panel.value}
+            value={panel.getValue(this.state)}
             onSelect={e => this.selectPanel(panel.id)}
           />
         );
