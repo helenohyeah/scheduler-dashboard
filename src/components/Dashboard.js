@@ -34,10 +34,29 @@ class Dashboard extends Component {
 
   // DECLARE STATE AND INITIAL VALUES
   state = {
-    loading: false,
-    focused: null
+    loading: true,
+    focused: null,
+    days: [],
+    appointments: {},
+    interviewers: {}
   };
   
+  // CHECK LOCAL STORAGE FOR SAVED FOCUS STATE
+  componentDidMount() {
+    const focused = JSON.parse(localStorage.getItem("focused"));
+
+    if (focused) {
+      this.setState({ focused });
+    }
+  }
+
+  // SAVE FOCUS TO LOCAL STORAGE WHEN STATE CHANGES
+  componentDidUpdate(previousProps, previousState) {
+    if (previousState.focused !== this.state.focused) {
+      localStorage.setItem("focused", JSON.stringify(this.state.focused));
+    }
+  }
+
   // TOGGLE PANEL FOCUS WHEN WHEN SELECTED
   selectPanel (id) {
     this.setState({
