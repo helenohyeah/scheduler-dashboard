@@ -1,6 +1,7 @@
 // LIBRARIES
 import React, { Component } from "react";
 import classnames from "classnames";
+import axios from "axios";
 
 // COMPONENTS
 import Loading from "./Loading";
@@ -41,8 +42,23 @@ class Dashboard extends Component {
     interviewers: {}
   };
   
-  // CHECK LOCAL STORAGE FOR SAVED FOCUS STATE
   componentDidMount() {
+    // GET DATA FROM SERVER
+    axios.defaults.baseURL = "http://localhost:9000";
+    Promise.all([
+      axios.get("/api/days"),
+      axios.get("/api/appointments"),
+      axios.get("/api/interviewers")
+    ]).then(([ days, appointments, interviewers ]) => {
+      this.setState({
+        loading: false,
+        days: days.data,
+        appointments: appointments.data,
+        interviewers: interviewers.data
+      });
+    }).catch(err => console.log("Error with GET: ", err));
+
+    // CHECK LOCAL STORAGE FOR SAVED FOCUS STATE
     const focused = JSON.parse(localStorage.getItem("focused"));
 
     if (focused) {
